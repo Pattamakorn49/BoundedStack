@@ -15,29 +15,28 @@ public class BoundedStack {
     private final List<String> book;
     private final int capacity;
 
-    //Abstaction Function(AF) : (book,capacity)
-    // book คือ 
-    // capacity คือ 
+    //Abstraction Function(AF) : (book, capacity)
+    // book     คือ ลำดับ (ตามลำดับที่เพิ่มเข้ามา) ของชื่อหนังสือที่ถูกจัดเก็บอยู่ในระบบ ณ ขณะนี้
+    //          book.get(0) คือหนังสือที่ถูกเพิ่มเข้ามาก่อนสุด (ที่ยังไม่ถูกลบ)
+    // capacity คือ ค่าที่รับมาตอนสร้างด้วย constructor แรก (ปัจจุบันยังไม่ถูกใช้บังคับขีดจำกัดใด ๆ
+    //          ในโค้ดส่วน mutator เก็บไว้เผื่อขยายพฤติกรรมในอนาคต โดยขีดจำกัดจริงที่ถูกบังคับใช้คือ MAX_BOOKS)
     
     //Representation Invariant(RI) :
     // - book ต้องไม่เป็น null 
-    // - book ต้องมีรายการประวัติจริง 
-    // - แต่ละรายการต้องไม่เป็น null
-    // - แต่ละรายการต้องไม่เป็น String ว่าง
-    // - จำนวนจัดเก็บต้องไม่เกิน MAX_BOOKS
-    // - ชื่อหนังสือต้องไม่ซํ้ากัน
+    // - book ต้องไม่มีสมาชิกที่เป็น null
+    // - แต่ละรายการ (ชื่อหนังสือ) ต้องไม่เป็น String ว่าง ("")
+    // - จำนวนหนังสือที่จัดเก็บ (book.size()) ต้องไม่เกิน MAX_BOOKS
+    // - ชื่อหนังสือในระบบต้องไม่ซ้ำกัน (ห้ามมีชื่อเดียวกันสองรายการ)
 
 
     private void checkRep() {
-        assert book != null : "history is not null";
-        assert book.size() <= MAX_BOOKS : "history exceeds maximum size";
+        assert book != null : "book must not be null";
+        assert book.size() <= MAX_BOOKS : "book exceeds MAX_BOOKS";
         Set<String> seen = new HashSet<>();
         for(String b : book) {
-            assert b != null : "history must not be null";
-            assert !b.isEmpty() : "history most not be empty";
-            assert b!="";
-            assert seen.add(b):"ชื่อเพลงซ้ำ: "+b;
-            
+            assert b != null : "book item must not be null";
+            assert !b.isEmpty() : "book item must not be empty string";
+            assert seen.add(b) : "พบชื่อหนังสือซ้ำ: " + b;
         }    
     }
 
@@ -67,7 +66,7 @@ public class BoundedStack {
     if(s==null||s.size()>MAX_BOOKS)throw new IllegalArgumentException();
     Set<String> seen = new HashSet<>();
     for(String b : s){
-         if(b==null||b=="") throw new IllegalArgumentException();
+         if(b==null||b.isEmpty()) throw new IllegalArgumentException();
             if(!seen.add(b)) throw new IllegalArgumentException();}
         this.book = new ArrayList<>(s);
         this.capacity = 0;
@@ -84,7 +83,7 @@ public class BoundedStack {
     * @throws IllegalArgumentException ถ้า s เป็น null หรือสตริงว่าง 
     */
    public boolean push(String s){
-    if(s==null||s =="")throw new IllegalArgumentException();
+    if(s==null||s.isEmpty())throw new IllegalArgumentException();
     if(book.contains(s)||book.size()>=MAX_BOOKS)return false; 
         book.add(s);
         checkRep();
@@ -145,5 +144,17 @@ public class BoundedStack {
    @Override
    public String toString() {
         return book.toString();
+   }
+
+   /**
+    * เพิ่มหนังสือต่อท้ายระบบจัดเก็บ (พฤติกรรมเหมือน push ทุกประการ
+    * เก็บชื่อ add ไว้เพื่อให้สอดคล้องกับชื่อ operation ที่ใช้เรียกทั่วไป)
+    *
+    * @param string หนังสือต้องไม่เป็น null และไม่เป็นสตริงว่าง
+    * @return true ถ้าเพิ่มสำเร็จ , false ถ้ามีหนังสือเล่มนี้อยู่แล้วหรือเต็มแล้ว
+    * @throws IllegalArgumentException ถ้า string เป็น null หรือสตริงว่าง
+    */
+   public boolean add(String string) {
+     return push(string);
    }
 }
