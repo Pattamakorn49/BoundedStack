@@ -1,88 +1,206 @@
+import java.util.*;
+/**
+ * Test runner 
+ */
 public class BoundedStackTest {
 
-    static int pass = 0;
-    static int fail = 0;
+    private static int passed = 0;
+    private static int failed = 0;
 
-    public static void main(String[] args) {
-        testAdd();
-        testSubtract();
-        testMultiply();
-        testDivide();
-        testDivideByZero();
-        testClear();
-        testHistoryIsCopy();
-
-        System.out.println("\nPASS = " + pass + ", FAIL = " + fail);
-    }
-
-    static void check(String name, boolean condition) {
+    /** helper กลาง — พิมพ์ PASS/FAIL และนับผลให้เอง */
+    private static void check(String name, boolean condition) {
         if (condition) {
-            pass++;
+            passed++;
             System.out.println("[PASS] " + name);
         } else {
-            fail++;
+            failed++;
             System.out.println("[FAIL] " + name);
         }
     }
 
-    static void testAdd() {
-        BoundedStack c = new BoundedStack();
-        c.add(5);
-        check("0 + 5 = 5", c.getResult() == 5);
-
-        c.add(-2);
-        check("5 + (-2) = 3", c.getResult() == 3);
-    }
-
-    static void testSubtract() {
-        BoundedStack c = new BoundedStack();
-        c.add(10);
-        c.subtract(15);
-        check("10 - 15 = -5", c.getResult() == -5);
-    }
-
-    static void testMultiply() {
-        BoundedStack c = new BoundedStack();
-        c.add(4);
-        c.multiply(3);
-        check("4 * 3 = 12", c.getResult() == 12);
-
-        c.multiply(0);
-        check("12 * 0 = 0", c.getResult() == 0);
-    }
-
-    static void testDivide() {
-        BoundedStack c = new BoundedStack();
-        c.add(10);
-        c.divide(2);
-        check("10 / 2 = 5", c.getResult() == 5);
-    }
-
-    static void testDivideByZero() {
-        BoundedStack c = new BoundedStack();
-        c.add(10);
-
-        boolean threw = false;
-        try {
-            c.divide(0);
-        } catch (ArithmeticException e) {
-            threw = true;
+    public static void main(String[] args) {
+        boolean assertsOn = false;
+        assert assertsOn = true;
+        if (!assertsOn) {
+            System.out.println("WARNING: assertions disabled"
+                    + " - re-run with: java -ea BoundedStackTest\n");
         }
-        check("หาร 0 ต้อง throw", threw);
+
+        System.out.println("=== Book Storage Test Suite ===\n");
+
+        testCreators();
+        testAdd();
+        testRemove();
+        testObservers();
+        testProducer();
+        testExposure();
+
+        System.out.println("\n=== Summary ===");
+        System.out.println("Passed: " + passed);
+        System.out.println("Failed: " + failed);
+        System.out.println("Total : " + (passed + failed));
+        System.out.println(failed == 0 ? "ALL TESTS PASSED" : "SOME TESTS FAILED");
+
+        if (failed > 0) {
+            System.exit(1);
+        }
     }
 
-    static void testClear() {
-        BoundedStack c = new BoundedStack();
-        c.add(100);
-        c.clear();
-        check("clear() แล้วค่าเป็น 0", c.getResult() == 0);
-        check("clear() แล้วประวัติว่าง", c.getHistory().size() == 0);
+    // --- Partition: ว่าง / มีหนังสือ / input ที่ผิดเงื่อนไข ---
+    private static void testCreators() {
+        System.out.println("-- Creators --");
+
+        BoundedStack empty = new BoundedStack(0);
+        check("new() -> empty", empty.size() == 0);
+
+        BoundedStack p = new BoundedStack(Arrays.asList("A", "B", "C"));
+        check("new(list) -> size 3", p.size() == 3);
+        check("new(list) -> preserves order",
+                p.book().equals(Arrays.asList("A", "B", "C")));
+
+        // boundary: list ว่างคือขอบล่างที่ถูกต้อง
+        BoundedStack fromEmpty = new BoundedStack(new ArrayList<String>());
+        check("new(empty list) -> empty", fromEmpty.size() == 0);
+
+        // input ที่ผิดเงื่อนไขต้องโยน exception ไม่ใช่ปล่อยผ่าน
+        boolean threwDup = false;
+        try {
+            new BoundedStack(Arrays.asList("A", "A"));
+        } catch (IllegalArgumentException e) {
+            threwDup = true;
+        }
+        check("new(duplicates) -> throws IllegalArgumentException", threwDup);
+
+        boolean threwNull = false;
+        try {
+            new BoundedStack(Arrays.asList("A", null));
+        } catch (IllegalArgumentException e) {
+            threwNull = true;
+        }
+        check("new(list with null) -> throws IllegalArgumentException", threwNull);
+
+        boolean threwNullList = false;
+        try {
+            new BoundedStack(null);
+        } catch (IllegalArgumentException e) {
+            threwNullList = true;
+        }
+        check("new(null) -> throws IllegalArgumentException", threwNullList);
     }
 
-    static void testHistoryIsCopy() {
-        BoundedStack c = new BoundedStack();
-        c.add(1);
-        c.getHistory().clear();
-        check("แก้ history ที่ได้มา ไม่กระทบของจริง", c.getHistory().size() == 1);
+    // --- Mutator: add ต้องรักษาลำดับและกันหนังสือซ้ำ ---
+    private static void testAdd() {
+        System.out.println("\n-- Add --");
+
+        BoundedStack s = new BoundedStack(0);
+        check("add(A) -> returns true", s.add("A"));
+        check("add(A) -> size 1", s.size() == 1);
+
+        s.add("B");
+        s.add("C");
+        check("add preserves insertion order",
+                s.book().equals(Arrays.asList("A", "B", "C")));
+
+        // หนังสือซ้ำไม่ใช่ error — คืน false เฉย ๆ
+        check("add duplicate -> returns false", !s.add("A"));
+        check("failed add leaves size unchanged", s.size() == 3);
+
+        // input ที่ผิดเงื่อนไขต้องโยน exception
+        boolean threwEmpty = false;
+        try {
+            s.add("");
+        } catch (IllegalArgumentException e) {
+            threwEmpty = true;
+        }
+        check("add(empty string) -> throws IllegalArgumentException", threwEmpty);
+
+        boolean threwNull = false;
+        try {
+            s.add(null);
+        } catch (IllegalArgumentException e) {
+            threwNull = true;
+        }
+        check("add(null) -> throws IllegalArgumentException", threwNull);
+
+        // boundary: เติมจนเต็มพอดีแล้วเติมเพิ่ม
+        BoundedStack full = new BoundedStack(0);
+        for (int i = 0; i < BoundedStack.MAX_BOOKS; i++) {
+            full.add("book" + i);
+        }
+        check("can fill up to MAX_BOOKS", full.size() == BoundedStack.MAX_BOOKS);
+        check("add when full -> returns false", !full.add("one more"));
+    }
+
+    // --- Mutator: remove ทั้งกรณีพบและไม่พบ ---
+    private static void testRemove() {
+        System.out.println("\n-- Remove --");
+
+        BoundedStack s = new BoundedStack(Arrays.asList("A", "B", "C"));
+        check("remove(B) -> returns true", s.remove("B"));
+        check("remove -> size decreases", s.size() == 2);
+        check("remove keeps the others in order",
+                s.book().equals(Arrays.asList("A", "C")));
+
+        // ลบหนังสือที่ไม่มีไม่ใช่ error — คืน false เฉย ๆ
+        check("remove missing book -> returns false", !s.remove("nope"));
+
+        // boundary: ลบจนหมด
+        s.remove("A");
+        s.remove("C");
+        check("remove all -> empty", s.size() == 0);
+        check("remove on empty book storage -> returns false", !s.remove("A"));
+    }
+
+    // --- Observer ต้องไม่มี side effect ---
+    private static void testObservers() {
+        System.out.println("\n-- Observers --");
+
+        BoundedStack s = new BoundedStack(Arrays.asList("A", "B"));
+        check("size reports 2", s.size() == 2);
+        check("contains finds an existing book", s.contains("A"));
+        check("contains rejects a missing book", !s.contains("Z"));
+        check("book() returns the full list in order",
+            s.book().equals(Arrays.asList("A", "B")));
+    }
+
+    // --- Producer ต้องคืนตัวใหม่ ไม่แก้ตัวเดิม ---
+    private static void testProducer() {
+        System.out.println("\n-- Producer (shuffled) --");
+
+        BoundedStack original = new BoundedStack(Arrays.asList("A", "B", "C", "D"));
+        BoundedStack shuffled = original.shuffled();
+
+        check("shuffled has the same size", shuffled.size() == original.size());
+
+        List<String> a = new ArrayList<String>(original.book());
+        List<String> b = new ArrayList<String>(shuffled.book());
+        Collections.sort(a);
+        Collections.sort(b);
+        check("shuffled contains exactly the same books", a.equals(b));
+
+        check("shuffled does not mutate the original",
+                original.book().equals(Arrays.asList("A", "B", "C", "D")));
+    }
+
+    // --- ทดสอบว่าไม่เกิด representation exposure ---
+    private static void testExposure() {
+        System.out.println("\n-- Representation Exposure --");
+
+        // ขาออก: แก้ list ที่ได้จาก book() ต้องไม่กระทบ rep
+        BoundedStack s = new BoundedStack(0);
+        s.add("A");
+
+        List<String> got = s.book();
+        got.clear();
+        check("clearing result of book() does not affect book storage",
+                s.size() == 1);
+
+        // ขาเข้า: แก้ list ที่ส่งให้ constructor ต้องไม่กระทบ rep
+        List<String> input = new ArrayList<String>(Arrays.asList("A", "B"));
+        BoundedStack p = new BoundedStack(input);
+
+        input.clear();
+        check("clearing constructor argument does not affect book storage",
+                p.size() == 2);
     }
 }
